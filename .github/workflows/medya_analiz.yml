@@ -2,10 +2,16 @@ name: Günlük Medya Anlatı Analizi
 
 on:
   push:
-    branches: [ "main" ] # Koda herhangi bir güncelleme geldiğinde çalışır
-  workflow_dispatch:      # GitHub paneli üzerinden elinizle (manuel) tetikleme butonu açar
+    branches: [ "main" ]
+  workflow_dispatch:      
   schedule:
-    - cron: '0 7 * * *'  # Her gün Türkiye saatiyle sabah 10:00'da otomatik çalışır (UTC 07:00)
+    - cron: '0 7 * * *'  
+
+# GitHub Pages'e yükleme yapabilmesi için gerekli izinler
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   medya_raporlama:
@@ -13,10 +19,10 @@ jobs:
 
     steps:
     - name: Depoyu Klonla
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4.2.2
 
     - name: Python Ortamını Hazırla
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v5.4.0
       with:
         python-version: '3.10'
 
@@ -29,3 +35,23 @@ jobs:
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: python analiz_yap.py
+
+    # YENİ ADIM: Oluşan index.html dosyasını depoya geri yükle ve deploy et
+    - name: Web Sayfasını Depoya Commit Et
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add index.html
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Günlük rapor web sayfası güncellendi: $(date +'%d-%m-%Y')" && git push)
+
+    # GitHub Pages altyapısını tetikle
+    - name: Pages Ayarlarını Yükle
+      uses: actions/configure-pages@v5
+
+    - name: Artifact Oluştur
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '.'
+
+    - name: GitHub Pages Üzerinde Yayınla
+      uses: actions/deploy-pages@v4
